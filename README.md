@@ -1,1 +1,70 @@
 # Improved-Identification-and-Recognition-of-Faces-using-Deep-Learning-and-Face-Mesh
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Simplified Test Suite for Face Recognition Module
+-------------------------------------------------
+"""
+
+import unittest
+import os
+import numpy as np
+from click.testing import CliRunner
+from face_recognition import api, face_recognition_cli, face_detection_cli
+
+class SimplifiedTestFaceRecognition(unittest.TestCase):
+    """Tests simplified functionalities of the face_recognition module."""
+
+    def setUp(self):
+        """Initial setup for the tests."""
+        self.test_images_dir = os.path.join(os.path.dirname(__file__), 'test_images')
+        self.obama_image_path = os.path.join(self.test_images_dir, 'obama.jpg')
+        self.obama_partial_image_path = os.path.join(self.test_images_dir, 'obama_partial_face.jpg')
+        self.biden_image_path = os.path.join(self.test_images_dir, 'biden.jpg')
+        self.png_32bit_image_path = os.path.join(self.test_images_dir, '32bit.png')
+
+    def test_image_loading(self):
+        """Test loading different image formats and checking their dimensions."""
+        obama_image = api.load_image_file(self.obama_image_path)
+        self.assertEqual(obama_image.shape, (1137, 910, 3))
+
+        png_image = api.load_image_file(self.png_32bit_image_path)
+        self.assertEqual(png_image.shape, (1200, 626, 3))
+
+    def test_face_detection(self):
+        """Test face detection in various images including 32-bit images and partial faces."""
+        obama_image = api.load_image_file(self.obama_image_path)
+        faces_detected = api.face_locations(obama_image)
+        self.assertEqual(len(faces_detected), 1)
+
+        partial_face_image = api.load_image_file(self.obama_partial_image_path)
+        partial_faces_detected = api.face_locations(partial_face_image)
+        self.assertEqual(len(partial_faces_detected), 1)
+
+    def test_face_encoding(self):
+        """Test generating and comparing face encodings."""
+        obama_image = api.load_image_file(self.obama_image_path)
+        obama_encoding = api.face_encodings(obama_image)[0]
+        self.assertEqual(len(obama_encoding), 128)
+
+        biden_image = api.load_image_file(self.biden_image_path)
+        biden_encoding = api.face_encodings(biden_image)[0]
+        self.assertFalse(np.array_equal(obama_encoding, biden_encoding))
+
+    def test_command_line_interface(self):
+        """Test command line interfaces for recognition and detection."""
+        runner = CliRunner()
+        result = runner.invoke(face_recognition_cli.main, [self.test_images_dir, self.obama_image_path])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('obama.jpg,obama', result.output)
+
+    def test_face_detection_cli(self):
+        """Test face detection command line interface."""
+        runner = CliRunner()
+        result = runner.invoke(face_detection_cli.main, [self.obama_image_path, "--model", "cnn"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('obama.jpg', result.output)
+
+if __name__ == '__main__':
+    unittest.main()
